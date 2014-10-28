@@ -177,9 +177,9 @@
   )
     
 
-(define hackasm
+(define tinyasm
   (command-line
-   #:program "hackasm"
+   #:program "tinyasm"
    #:once-each
    [("-v" "--verbose") "Print lots of stuff."
                        (verbose-mode true)]
