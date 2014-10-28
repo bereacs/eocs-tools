@@ -20,10 +20,10 @@
       (cond
         [(comment-mode)
          (fprintf outp "~a\t// ~a~n" 
-                  (convert-instruction line)
+                  (convert-instruction line lineno)
                   line)]
         [else
-         (fprintf outp "~a~n" (convert-instruction line))])
+         (fprintf outp "~a~n" (convert-instruction line lineno))])
                   
       
       (when (verbose-mode)

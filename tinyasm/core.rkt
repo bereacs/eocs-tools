@@ -125,13 +125,30 @@
     (set! ls (cons val ls)))
   ls)
 
-(define (convert-a-instr instr)
-  (define n (string->number (list-ref (regexp-match "@([0-9]+)" instr) 1)))
+(define label-location-counter 16)
+
+(define (dec->bin n)
   (define b (bits n))
-  (when (> 15 (length b))
-    (set! b (pad-left b "0" 15)))
-  (set! b (cons "0" b))
-  (apply string-append (map (lambda (n) (format "~a" n)) b)))
+     (when (> 15 (length b))
+       (set! b (pad-left b "0" 15)))
+     (set! b (cons "0" b))
+     (apply string-append (map (lambda (n) (format "~a" n)) b)))
+
+(define (convert-a-instr instr)
+  (cond
+    ;; Is a number
+    [(regexp-match "^@[0-9]+" instr)
+     (define n (string->number (list-ref (regexp-match "@([0-9]+)" instr) 1)))
+     (dec->bin n)
+     ]
+    ;; Is a label
+    [(regexp-match "^@([a-zA-Z]+)" instr)
+     (define lab (list-ref (regexp-match "^@([a-zA-Z]+)" instr) 1))
+     (unless (hash-ref label-locs lab false)
+       (hash-set! label-locs lab label-location-counter)
+       (set! label-location-counter (add1 label-location-counter)))
+     (dec->bin (hash-ref label-locs lab))
+     ]))
          
 
 (define (is-a-instr? instr)
@@ -140,12 +157,30 @@
 (define (is-c-instr? instr)
   (not (is-a-instr? instr)))
 
-(define (convert-instruction instr)
+(define (is-loop-label? instr)
+  (regexp-match "\\(.*?\\)" instr))
+
+(define label-locs 
+  (make-hash 
+   (map (lambda (n)
+          (cons (string->symbol
+                 (format "R~a" n))
+                n))
+        (range 0 15))))
+   
+
+(define (convert-instruction instr lineno)
   (cond
+    [(is-loop-label? instr)
+     (hash-set! label-locs
+                (list-ref (regexp-match "\\((.*?)\\)" instr) 1)
+                lineno)
+     (values "" false)
+     ]
     [(is-a-instr? instr)
-     (convert-a-instr instr)]
+     (values (convert-a-instr instr) true)]
     [(is-c-instr? instr)
-     (convert-c-instr instr)]
+     (values (convert-c-instr instr) true)]
     [else
      (error 'convert-instruction "Error in convert instruction: ~a" instr)]
     ))

@@ -51,8 +51,10 @@
   assemble-button
   )
 
+
 (define no-text%
   (class text%
+    
     (super-new)
     (define insertable? false)
     (define (can-insert? s e)
@@ -83,6 +85,9 @@
   
   (define bin-editor
     (new no-text%))
+  (define keymap (keymap:get-editor))
+  (send bin-editor set-keymap keymap)
+  
   (define bin-canvas
     (new editor-canvas%
          [parent hpane]
@@ -111,27 +116,38 @@
       
       (send bin enable-insert)
       (define lines (regexp-split "\n" asm-text))
-      (for ([line lines]
-            [lineno (range 1 (length lines))])
+      (define lineno 1)
+      (for ([line lines])
         (with-handlers ([exn:fail?
                          (lambda (e)
                            ;; (printf "~a~n" e)
-                           (send bin
-                                 insert
-                                 (format "Line ~a: Error in [ ~a ]~n"
-                                         lineno
-                                         line)
-                                 (send bin get-end-position)))])
-          (define converted
+                           (when (> (string-length line) 0)
+                             (send bin
+                                   insert
+                                   (format "Line ~a: Error in [ ~a ]~n"
+                                           lineno
+                                           line)
+                                   (send bin get-end-position))))])
+          
+          (define-values (converted-instruction inc?)
+            (convert-instruction line lineno))
+          
+          (define display-string
             (if (show-comments?)
-                (format "~a // ~a~n" 
-                        (convert-instruction line)
+                (format "~a // L~a: ~a~n" 
+                        converted-instruction
+                        lineno
                         line)
                 (format "~a~n" 
-                        (convert-instruction line))))
-          (send bin insert
-                converted
-                (send bin get-end-position))
+                        converted-instruction)))
+          
+          (when (or inc? (show-comments?))
+            (send bin insert
+                  display-string
+                  (send bin get-end-position)))
+          
+          (when inc?
+            (set! lineno (add1 lineno)))
           ))
       (send bin disable-insert))))
 
