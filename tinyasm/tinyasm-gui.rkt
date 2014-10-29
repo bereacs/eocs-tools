@@ -72,10 +72,14 @@
                      [stretchable-height true]))
   (define asm-editor
     (new text%))
+  (define asm-keymap (keymap:get-editor))
+  (send asm-editor set-keymap asm-keymap)
   
+  (define asmvpane (new vertical-panel% [parent hpane]))
+  (new message% [parent asmvpane] [label "Assembly (.asm)"])
   (define asm-canvas
     (new editor-canvas%
-         [parent hpane]
+         [parent asmvpane]
          [editor asm-editor]
          [horiz-margin 10]
          [vert-margin 10]
@@ -85,12 +89,14 @@
   
   (define bin-editor
     (new no-text%))
-  (define keymap (keymap:get-editor))
-  (send bin-editor set-keymap keymap)
+  (define bin-keymap (keymap:get-editor))
+  (send bin-editor set-keymap bin-keymap)
   
+  (define binvpane (new vertical-pane% [parent hpane]))
+  (new message% [parent binvpane] [label "Binary (.hack)"])
   (define bin-canvas
     (new editor-canvas%
-         [parent hpane]
+         [parent binvpane]
          [editor bin-editor]
          [horiz-margin 10]
          [vert-margin 10]
@@ -104,6 +110,8 @@
   (lambda (bin asm)
     (lambda (b e)
       
+      (clear-label-locations)
+     
       (define asm-text
         (send asm get-text 0 'eof))
       (set! asm-text
@@ -116,40 +124,120 @@
       
       (send bin enable-insert)
       (define lines (regexp-split "\n" asm-text))
-      (define lineno 1)
       (for ([line lines])
-        (with-handlers ([exn:fail?
-                         (lambda (e)
-                           ;; (printf "~a~n" e)
-                           (when (> (string-length line) 0)
-                             (send bin
-                                   insert
-                                   (format "Line ~a: Error in [ ~a ]~n"
-                                           lineno
-                                           line)
-                                   (send bin get-end-position))))])
-          
-          (define-values (converted-instruction inc?)
-            (convert-instruction line lineno))
-          
+        (define current-line (line-number))
+        (define converted-instruction
+          (with-handlers ([exn:fail?
+                           (lambda (e)
+                             (printf "~a~n" e))])
+            (convert-instruction line)))
+          ;; (displayln converted-instruction)
           (define display-string
             (if (show-comments?)
                 (format "~a // L~a: ~a~n" 
                         converted-instruction
-                        lineno
+                        current-line
                         line)
                 (format "~a~n" 
                         converted-instruction)))
           
-          (when (or inc? (show-comments?))
-            (send bin insert
-                  display-string
-                  (send bin get-end-position)))
-          
-          (when inc?
-            (set! lineno (add1 lineno)))
-          ))
+        (send bin insert
+              display-string
+              (send bin get-end-position))
+        )
       (send bin disable-insert))))
+
+(define (make-save-callback f suffix editor)
+  (lambda (m e)
+    (finder:default-extension suffix)
+    (cond
+      [(equal? suffix ".asm")
+       (finder:default-filters '(("Assembly" "*.asm")))]
+      [else 
+       (finder:default-filters '(("Binary" "*.hack")))])
+    (define d (seconds->date (current-seconds)))
+    (define (pad n)
+      (if (< n 10)
+          (format "0~a" n) n))
+    (define filepath
+      (finder:common-put-file
+       (format "~a~a~a-~a~a"
+               (pad (date-year d))
+               (pad (date-month d))
+               (pad (date-day d))
+               (cond 
+                 [(equal? ".asm" suffix) "assembly"]
+                 [else "binary"])
+               suffix)
+       false
+       true
+       (format "Save ~a file" suffix)
+       (byte-regexp (string->bytes/utf-8 (format ".*\\~a" suffix)))
+       (format "File must end with ~a" suffix)
+       f
+      ))
+    
+    (when filepath
+      (define op (open-output-file filepath #:exists 'replace))
+      (for ([line (regexp-split "\n" (send editor get-text))])
+        (when (> (string-length line) 1)
+          (fprintf op "~a~n" line)))
+      (close-output-port op))
+    ))
+    
+
+(define open-assembly-callback
+  (make-parameter
+   (lambda (m e)  'foo)))
+
+(require racket/file)
+(define (build-menu f bin asm)
+
+  (open-assembly-callback 
+   (lambda (m e)
+     (finder:default-extension ".asm")
+     (finder:default-filters '(("Assembly" "*.asm")))
+     (define filepath (finder:common-get-file
+                       false
+                       "Select .asm to load"
+                       (byte-regexp
+                        (string->bytes/utf-8 ".*?\\.asm"))
+                       "Load .asm files only."
+                       false))
+     (when filepath
+       (send bin select-all)
+       (send bin clear)
+       (send asm select-all)
+       (send asm clear)
+       (send asm insert 
+           (file->string filepath)
+           0
+           ))))
+     
+  (define mb (new menu-bar% 
+                  [parent f]))
+  (define file 
+    (new menu%
+         [label "File"]
+         [parent mb]))
+  
+  (new menu-item%
+       [label "&Save Assembly"]
+       [parent file]
+       [callback (make-save-callback f ".asm" asm)])
+  (new menu-item%
+       [label "&Open Assembly"]
+       [parent file]
+       [callback (lambda (m e)
+                   ((open-assembly-callback) m e))])
+  (new menu-item%
+       [label "Save &Hack"]
+       [parent file]
+       [callback (make-save-callback f ".hack" bin)])
+  
+  (send mb enable true)
+  mb)
+                  
 
 (define (main)
   (define f (new frame%
@@ -165,6 +253,8 @@
   
   (assemble-callback
    (assembler bin asm))
+  
+  (build-menu f bin asm)
   
   (send f show true)
   )

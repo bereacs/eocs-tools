@@ -3,11 +3,14 @@
 ;; For the GUI
 (provide convert-instruction
          verbose-mode
-         comment-mode)
+         comment-mode
+         clear-label-locations
+         line-number)
 
 ;; Parameters to control output.
 (define verbose-mode (make-parameter false))
 (define comment-mode (make-parameter false))
+(define line-number (make-parameter 1))
 
 (define jumps
   (make-hash 
@@ -138,16 +141,21 @@
   (cond
     ;; Is a number
     [(regexp-match "^@[0-9]+" instr)
-     (define n (string->number (list-ref (regexp-match "@([0-9]+)" instr) 1)))
+     ;;(displayln "y")
+     (define n (string->number (list-ref (regexp-match "^@([0-9]+)" instr) 1)))
      (dec->bin n)
      ]
     ;; Is a label
-    [(regexp-match "^@([a-zA-Z]+)" instr)
-     (define lab (list-ref (regexp-match "^@([a-zA-Z]+)" instr) 1))
-     (unless (hash-ref label-locs lab false)
-       (hash-set! label-locs lab label-location-counter)
-       (set! label-location-counter (add1 label-location-counter)))
-     (dec->bin (hash-ref label-locs lab))
+    [(regexp-match "^@([a-zA-Z0-9_]+)" instr)
+     (define lab (list-ref (regexp-match "^@([a-zA-Z0-9_]+)" instr) 1))
+     (cond
+       [(hash-ref label-locs lab false)
+        (dec->bin (hash-ref label-locs lab))]
+       [else
+        ;;(displayln "x")
+        (hash-set! label-locs lab label-location-counter)
+        (set! label-location-counter (add1 label-location-counter))
+        (dec->bin (hash-ref label-locs lab))])
      ]))
          
 
@@ -160,27 +168,33 @@
 (define (is-loop-label? instr)
   (regexp-match "\\(.*?\\)" instr))
 
-(define label-locs 
-  (make-hash 
-   (map (lambda (n)
-          (cons (string->symbol
-                 (format "R~a" n))
-                n))
-        (range 0 15))))
+(define label-locs (make-hash))
    
+(define (clear-label-locations)
+  (set! label-location-counter 16)
+  (line-number 1)
+  (set! label-locs
+        (make-hash 
+         (map (lambda (n)
+                (cons (string->symbol (format "R~a" n)) n))
+              (range 0 15)))))
 
-(define (convert-instruction instr lineno)
+(define (convert-instruction instr)
   (cond
+    [(< (string-length instr) 1) ""]
     [(is-loop-label? instr)
      (hash-set! label-locs
                 (list-ref (regexp-match "\\((.*?)\\)" instr) 1)
-                lineno)
-     (values "" false)
-     ]
+                (line-number))
+     ""]
     [(is-a-instr? instr)
-     (values (convert-a-instr instr) true)]
+     (define result (convert-a-instr instr))
+     (line-number (add1 (line-number)))
+     result]
     [(is-c-instr? instr)
-     (values (convert-c-instr instr) true)]
+     (define result (convert-c-instr instr))
+     (line-number (add1 (line-number)))
+     result]
     [else
      (error 'convert-instruction "Error in convert instruction: ~a" instr)]
     ))

@@ -11,11 +11,11 @@
   (define lines (file->list infile read-line))
   
   (for ([line lines]
-        [num (range 1 (length lines))])
+        [lineno (range 1 (length lines))])
     (set! line (string-trim line " "))
     (when (< 0 (string-length line))
       (when (verbose-mode)
-        (printf "Line ~a: ~a~n" num line))
+        (printf "Line ~a: ~a~n" lineno line))
       
       (cond
         [(comment-mode)
