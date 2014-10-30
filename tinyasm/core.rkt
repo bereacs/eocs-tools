@@ -10,7 +10,9 @@
 ;; Parameters to control output.
 (define verbose-mode (make-parameter false))
 (define comment-mode (make-parameter false))
-(define line-number (make-parameter 1))
+;; ROM IS ZERO INDEXED... NOT LINE NUMBERS...
+(define ROMSTART 0)
+(define line-number (make-parameter ROMSTART))
 
 (define jumps
   (make-hash 
@@ -172,15 +174,23 @@
    
 (define (clear-label-locations)
   (set! label-location-counter 16)
-  (line-number 1)
+  (line-number ROMSTART)
   (set! label-locs
         (make-hash 
          (map (lambda (n)
                 (cons (string->symbol (format "R~a" n)) n))
               (range 0 15)))))
 
+(define (strip s)
+  (regexp-replaces s '([#px"^(\\s*)" ""]
+                       [#px"(\\s*)$" ""])))
+
 (define (convert-instruction instr)
+  (set! instr (strip instr))
   (cond
+    [(regexp-match "//" instr)
+     (define m (regexp-replace "(.*?)(//.*)" instr "\\1"))
+     (convert-instruction (strip m))]
     [(< (string-length instr) 1) ""]
     [(is-loop-label? instr)
      (hash-set! label-locs
