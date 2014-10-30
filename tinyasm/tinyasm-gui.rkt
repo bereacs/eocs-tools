@@ -3,7 +3,7 @@
 (require framework)
 (require "core.rkt")
 
-(define VERSION "0.04")
+(define VERSION "20141029")
 
 (define model%
   (class object%
