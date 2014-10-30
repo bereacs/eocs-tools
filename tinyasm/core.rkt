@@ -2,6 +2,7 @@
 
 ;; For the GUI
 (provide convert-instruction
+         calculate-label-locations
          verbose-mode
          comment-mode
          clear-label-locations
@@ -209,3 +210,23 @@
      (error 'convert-instruction "Error in convert instruction: ~a" instr)]
     ))
   
+
+(define (calculate-label-locations instrs)
+  (clear-label-locations)
+  (for ([instr instrs])
+    (cond
+      [(< (string-length instr) 1) ""]
+      ;; 
+      [(is-loop-label? instr)
+       (hash-set! label-locs
+                  (list-ref (regexp-match "\\((.*?)\\)" instr) 1)
+                  (line-number))
+       ""]
+      [(is-a-instr? instr)
+       (line-number (add1 (line-number)))]
+      [(is-c-instr? instr)
+       (line-number (add1 (line-number)))]
+      [else (error 'convert-instruction "Error in calc label locations: ~a" instr)]
+      ))
+  (line-number ROMSTART)
+  )

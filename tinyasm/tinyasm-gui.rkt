@@ -109,8 +109,6 @@
 (define assembler
   (lambda (bin asm)
     (lambda (b e)
-      
-      (clear-label-locations)
      
       (define asm-text
         (send asm get-text 0 'eof))
@@ -124,6 +122,9 @@
       
       (send bin enable-insert)
       (define lines (regexp-split "\n" asm-text))
+      
+      (calculate-label-locations lines)
+      
       (for ([line lines])
         (define current-line (line-number))
         (define converted-instruction
