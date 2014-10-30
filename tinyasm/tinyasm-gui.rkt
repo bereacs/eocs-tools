@@ -3,6 +3,8 @@
 (require framework)
 (require "core.rkt")
 
+(define VERSION "0.04")
+
 (define model%
   (class object%
     (define views '())
@@ -242,7 +244,7 @@
 
 (define (main)
   (define f (new frame%
-                 [label "TinyASM"]
+                 [label (format "TinyASM ~a" VERSION)]
                  [width 600]
                  [height 400]
                  ))
