@@ -179,7 +179,7 @@
   (set! label-locs
         (make-hash 
          (map (lambda (n)
-                (cons (string->symbol (format "R~a" n)) n))
+                (cons (format "R~a" n) n))
               (range 0 15)))))
 
 (define (strip s)
