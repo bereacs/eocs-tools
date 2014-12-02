@@ -138,5 +138,3 @@
    (goto 'ENDIF-LABEL110387)
    (label 'ENDIF-LABEL110387)
    (label 'ENDWHILE110384)))
-
-(define 
