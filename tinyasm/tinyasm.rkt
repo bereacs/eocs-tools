@@ -39,7 +39,7 @@
       (when (verbose-mode)
         (printf "Line ~a: ~a~n" lineno line))
       (define converted (convert-instruction line))
-      (define hex (number->string (string->number converted 2) 16))
+      
       
       (cond
         [(comment-mode)
@@ -50,6 +50,7 @@
         [(output-rom)
          (when (< 1 (string-length converted))
            (set! ROMSIZE (add1 ROMSIZE))
+           (define hex (number->string (string->number converted 2) 16))
            (fprintf outp "\t0x~a, /* ~a ~a => ~a */~n" 
                     (pad4 hex)
                     line
