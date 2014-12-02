@@ -42,16 +42,18 @@
       
       (cond
         [(comment-mode)
+         (when (< 1 (string-length converted))
          (fprintf outp "~a\t// ~a~n" 
                   converted
-                  line)]
+                  line))]
         [(output-rom)
+         (when (< 1 (string-length converted))
          (fprintf outp "\t0x~a, /* ~a ~a => ~a */~n" 
                   (pad4 hex)
                   line
                   (make-spaces line 8)
                   converted
-                  )]
+                  ))]
         
         [else
          (fprintf outp "~a~n" converted)])
