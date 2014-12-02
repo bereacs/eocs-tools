@@ -24,6 +24,7 @@
   (define outp (open-output-file outfile #:exists 'replace))
   
   (define lines (file->list infile read-line))
+  (define ROMSIZE 0)
   
   (when (output-rom)
     (fprintf outp "uint16_t ROM[] = {~n")
@@ -48,12 +49,13 @@
                   line))]
         [(output-rom)
          (when (< 1 (string-length converted))
-         (fprintf outp "\t0x~a, /* ~a ~a => ~a */~n" 
-                  (pad4 hex)
-                  line
-                  (make-spaces line 8)
-                  converted
-                  ))]
+           (set! ROMSIZE (add1 ROMSIZE))
+           (fprintf outp "\t0x~a, /* ~a ~a => ~a */~n" 
+                    (pad4 hex)
+                    line
+                    (make-spaces line 8)
+                    converted
+                    ))]
         
         [else
          (fprintf outp "~a~n" converted)])
@@ -64,7 +66,9 @@
       ))
   
   (when (output-rom)
-    (fprintf outp "};~n"))
+    (fprintf outp "};~n")
+    (fprintf outp "#define ROMSIZE ~a~n" ROMSIZE)
+    )
   
   (close-output-port outp)
   )
