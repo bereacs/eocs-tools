@@ -22,8 +22,13 @@
 
 (define (process infile outfile)
   (define outp (open-output-file outfile #:exists 'replace))
+  ;; Initialize the label locations.
+  (clear-label-locations)
   
   (define lines (file->list infile read-line))
+  ;;(printf "Number of lines: ~a~n" (length lines))
+  ;;(printf "LINES: ~a~n" lines)
+  
   (define ROMSIZE 0)
   
   (when (output-rom)
@@ -31,7 +36,8 @@
     )
   
   (for ([line lines]
-        [lineno (range 1 (length lines))])
+        ;; Racket quits iterating at the end of the shortest list...
+        [lineno (range 1 (add1 (length lines)))])
     (set! line (string-trim line " "))
     
     (when (< 0 (string-length line))
@@ -39,8 +45,7 @@
       (when (verbose-mode)
         (printf "Line ~a: ~a~n" lineno line))
       (define converted (convert-instruction line))
-      
-      
+     
       (cond
         [(comment-mode)
          (when (< 1 (string-length converted))
@@ -51,6 +56,7 @@
          (when (< 1 (string-length converted))
            (set! ROMSIZE (add1 ROMSIZE))
            (define hex (number->string (string->number converted 2) 16))
+           ;;(printf "ROM HEX: ~a~n" (pad4 hex))
            (fprintf outp "\t0x~a, /* ~a ~a => ~a */~n" 
                     (pad4 hex)
                     line
@@ -67,8 +73,9 @@
       ))
   
   (when (output-rom)
-    (fprintf outp "};~n")
-    (fprintf outp "#define ROMSIZE ~a~n" ROMSIZE)
+    ;; Add a 0x0000 to the end of the array.
+    (fprintf outp "\t0x0000  /*              END OF LINE      */~n};~n")
+    (fprintf outp "#define ROMSIZE ~a~n" (add1 ROMSIZE))
     )
   
   (close-output-port outp)

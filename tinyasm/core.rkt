@@ -35,37 +35,45 @@
      ("AD"  . "110")
      ("AMD" . "111"))))
 
-(define comps
-  (make-hash
-   '(("0" . "101010")
-     ("1"   . "111111")
-     ("-1"  . "111010")
-     ("D"   . "001100")
-     ("A"   . "110000")
-     ("M"   . "110000")
-     ("!D"  . "001101")
-     ("!A"  . "110001")
-     ("!M"  . "110001")
-     ("-D"  . "001111")
-     ("-A"  . "110011")
-     ("-M"  . "110011")
-     ("D+1" . "011111")
-     ("A+1" . "110111")
-     ("M+1" . "110111")
-     ("D-1" . "001110")
-     ("A-1" . "110010")
-     ("M-1" . "110010")
-     ("D+A" . "000010")
-     ("D+M" . "000010")
-     ("D-A" . "010011")
-     ("D-M" . "010011")
-     ("A-D" . "000111")
-     ("M-D" . "000111")
-     ("D&A" . "000000")
-     ("D&M" . "000000")
-     ("D|A" . "010101")
-     ("D|M" . "010101")
-     )))
+(define computations   
+   '(("D&A" "000000")
+     ("D&M" "000000")
+     ("D+M" "000010")
+     ("D+A" "000010")
+     ("A-D" "000111")
+     ("M-D" "000111")
+     ("D"   "001100")
+     ("!D"  "001101")
+     ("D-1" "001110")
+     ("-D"  "001111")
+     ("D-A" "010011")
+     ("D-M" "010011")
+     ("D|M" "010101")
+     ("D|A" "010101")
+     ("D+1" "011111")
+     ("0"   "101010")
+     ("M"   "110000")
+     ("A"   "110000")
+     ("!A"  "110001")
+     ("!M"  "110001")
+     ("M-1" "110010")
+     ("A-1" "110010")
+     ("-A"  "110011")
+     ("-M"  "110011")
+     ("M+1" "110111")
+     ("A+1" "110111")
+     ;; Lots of space to add instructions that start with 111.
+     ("+5V"  "111001") ;; digitalWrite HIGH
+     ("-1"   "111010") ;; Original instruction
+     ("+0V"  "111011") ;; digiatlWrite LOW
+     ("DEL"  "111100") ;; delay
+     ;;("XXX"  "111101")
+     ;;("YYY"  "111110")
+     ("1"   "111111")))
+(define comps (make-hash))
+(for ([c computations])
+  (hash-set! comps (first c) (second c)))
+
 
 
 
@@ -141,10 +149,11 @@
      (apply string-append (map (lambda (n) (format "~a" n)) b)))
 
 (define (convert-a-instr instr)
+  ;; (printf "Converting A: ~a~n" instr)
   (cond
     ;; Is a number
     [(regexp-match "^@[0-9]+" instr)
-     ;;(displayln "y")
+     (displayln "y")
      (define n (string->number (list-ref (regexp-match "^@([0-9]+)" instr) 1)))
      (dec->bin n)
      ]
@@ -153,14 +162,17 @@
      (define lab (list-ref (regexp-match "^@([a-zA-Z0-9_]+)" instr) 1))
      (cond
        [(hash-ref label-locs lab false)
-        (dec->bin (hash-ref label-locs lab))]
+        ;; (printf "Label is string?: ~a~n" (string? lab))
+        (define value (hash-ref label-locs lab))
+        ;; (printf "Value found: ~a~n" value)
+        (dec->bin value)]
        [else
-        ;;(displayln "x")
+        ;; (printf "lab: ~a~n locs: ~a~n" lab label-locs)
+        ;; (displayln "x")
         (hash-set! label-locs lab label-location-counter)
         (set! label-location-counter (add1 label-location-counter))
         (dec->bin (hash-ref label-locs lab))])
      ]))
-         
 
 (define (is-a-instr? instr)
   (regexp-match "^@" instr))
@@ -188,6 +200,7 @@
 
 (define (convert-instruction instr)
   (set! instr (strip instr))
+  ;;(printf "Converting: ~a~n" instr)
   (cond
     [(regexp-match "//" instr)
      (define m (regexp-replace "(.*?)(//.*)" instr "\\1"))
