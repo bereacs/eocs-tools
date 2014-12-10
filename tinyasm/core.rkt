@@ -153,7 +153,7 @@
   (cond
     ;; Is a number
     [(regexp-match "^@[0-9]+" instr)
-     (displayln "y")
+     ;;(displayln "y")
      (define n (string->number (list-ref (regexp-match "^@([0-9]+)" instr) 1)))
      (dec->bin n)
      ]
