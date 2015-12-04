@@ -18,6 +18,8 @@
 
 (define (make-spaces str tot)
   (define spaces (- tot (string-length str)))
+  (when (< spaces 0)
+    (set! spaces 0))
   (make-string spaces #\space))
 
 (define (process infile outfile)
@@ -34,6 +36,13 @@
   (when (output-rom)
     (fprintf outp "uint16_t ROM[] = {~n")
     )
+  
+  (define longest-line 6)
+  (for ([line lines])
+    (set! line (string-trim line " "))
+    (set! line (convert-instruction line))
+    (when (< longest-line (string-length line))
+      (set! longest-line (string-length line))))
   
   (for ([line lines]
         ;; Racket quits iterating at the end of the shortest list...
@@ -60,7 +69,7 @@
            (fprintf outp "\t0x~a, /* ~a ~a => ~a */~n" 
                     (pad4 hex)
                     line
-                    (make-spaces line 8)
+                    (make-spaces line (+ longest-line 1))
                     converted
                     ))]
         
